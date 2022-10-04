@@ -1,0 +1,277 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["interactiveTransactions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:rootroot@127.0.0.1:5432/miclinicaprod"
+}
+
+generator prismaClassGenerator {
+  provider = "prisma-class-generator"
+  output   = "../temp/entities"
+  // dryRun   = false
+}
+
+enum LogicalState {
+  Active
+  Deleted
+}
+
+model Rol {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name String @unique
+
+  users       User[]
+  permissions Permission[]
+
+}
+
+model Permission {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name        String  @unique
+  description String?
+  roles       Rol[]
+}
+
+enum ClientType {
+  Socio
+  Particular
+}
+
+model City {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name     String
+  province Province @relation(fields: [provinceId], references: [id])
+  users    User[]
+
+  provinceId Int
+}
+
+model Province {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name String
+  city City[]
+}
+
+model File {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name String
+  path String
+  user User?  @relation(fields: [userId], references: [id])
+  note Note?
+
+  userId Int?
+}
+
+enum UserType {
+  Admin
+  User
+  Affiliate
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  //AUTH
+  username String?  @unique
+  password String?
+  roles    Rol[]
+  userType UserType
+
+  //PROFILE
+  firstName String?
+  lastName  String?
+  bornDate  DateTime?
+  dni       String?
+  address   String?
+  email     String?
+  phone     String?
+  city      City?     @relation(fields: [cityId], references: [id])
+
+  //AFFILIATE
+  inscriptionDate DateTime?
+  familiarMember  FamiliarMember?
+  validated       Boolean?        @default(false)
+
+
+  //FALLECIDO Cocheria
+  // cientType             ClientType?
+  // serviceDate           DateTime?
+  // ataud                 String?
+  // servicePrice          Float?
+  // serviceReference      String?
+  // serviceAdditionalCost Float?
+  // servicePayment        String?
+
+  //EXTRA
+  files    File[]
+  notes    Note[]
+  office   Office?   @relation(fields: [officeId], references: [id])
+  payments Payment[]
+
+
+  cityId       Int?
+  collectorId  Int?
+  officeId     Int?
+  paymentWayId Int?
+}
+
+model Office {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name  String
+  users User[]
+}
+
+model Note {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  message String?
+  file    File?   @relation(fields: [fileId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  userId Int?
+  fileId Int? @unique
+}
+
+model FamiliarMember {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  familiarGroup FamiliarGroup @relation(fields: [familiarGroupId], references: [id])
+  member        User          @relation(fields: [userId], references: [id])
+  isHolder      Boolean       @default(false)
+
+  familiarGroupId Int
+  userId          Int @unique
+}
+
+model PaymentWay {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name           String
+  isAutomatic    Boolean?        @default(false)
+  isCollector    Boolean?        @default(false)
+  familiarGroups FamiliarGroup[]
+}
+
+model FamiliarGroup {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  plans      Plan[]
+  members    FamiliarMember[]
+  cbu        String?
+  payments   Payment[]
+  collector  Collector?       @relation(fields: [collectorId], references: [id])
+  paymentWay PaymentWay?      @relation(fields: [paymentWayId], references: [id])
+
+  collectorId  Int?
+  paymentWayId Int?
+}
+
+enum PaymentType {
+  Cash
+  Online
+}
+
+enum PaymentStatus {
+  Paid
+  Unpaid
+  Owe
+}
+
+model Payment {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  familiarGroup FamiliarGroup? @relation(fields: [familiarGroupId], references: [id])
+  user          User?          @relation(fields: [userId], references: [id])
+  amount        Float
+  total         Float
+  month         Int
+  year          Int
+  type          PaymentType
+  status        PaymentStatus  @default(Unpaid)
+
+
+  familiarGroupId Int?
+  userId          Int?
+  @@index([month, year, userId, type])
+}
+
+model Plan {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  name           String
+  price          Float
+  familiarGroups FamiliarGroup[]
+
+  //COCHERIA
+  // maxAge       Int?
+  // nextPlan     Plan?  @relation("nextPlan", fields: [planId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  // previousPlan Plan?  @relation("nextPlan")
+  // planId String? @unique @db.ObjectId
+}
+
+model Collector {
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  logicalState LogicalState @default(Active)
+
+  firstName      String?
+  lastName       String?
+  phone          String?
+  email          String?
+  dni            String?
+  cuit           String?
+  cbu            String?
+  familiarGroups FamiliarGroup[]
+}
